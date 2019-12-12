@@ -11,12 +11,12 @@ import (
 func main() {
 	http.HandleFunc("/ping",
 		errorMiddleware(
-			contentTypeMiddleware(
+			methodMiddleware("GET",
 				corsMiddleware(
 					pingHandler()))))
 	http.HandleFunc("/authenticate",
 		errorMiddleware(
-			contentTypeMiddleware(
+			methodMiddleware("POST",
 				corsMiddleware(
 					authenticateHandler()))))
 	if err := http.ListenAndServe(":80", nil); err != nil {
@@ -24,47 +24,60 @@ func main() {
 	}
 }
 
-func contentTypeMiddleware(h http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		h.ServeHTTP(w, r)
+func respond(writer http.ResponseWriter, statusCode int, body model.Response) {
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(statusCode)
+	if statusCode > 299 && nil == body {
+		body = model.NewResponseError(http.StatusText(statusCode))
+	}
+	if nil != body {
+		if _, err := writer.Write(body.ToJson()); nil != err {
+			panic(err)
+		}
 	}
 }
 
-func errorMiddleware(h http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func errorMiddleware(next http.Handler) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
 		defer func() {
-			if i := recover(); i != nil {
-				err, ok := i.(error)
+			if result := recover(); nil != result {
+				err, ok := result.(error)
 				if !ok {
 					err = errors.New("undefined error")
 				}
-				body := model.NewResponseError(err.Error()).ToJson()
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write(body)
+				respond(writer, http.StatusInternalServerError, model.NewResponseError(err.Error()))
 			}
 		}()
-		h.ServeHTTP(w, r)
+		next.ServeHTTP(writer, request)
 	}
 }
 
-func corsMiddleware(h http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "content-type")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(200)
+func methodMiddleware(method string, next http.Handler) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if method != request.Method {
+			respond(writer, http.StatusMethodNotAllowed, nil)
 		} else {
-			h.ServeHTTP(w, r)
+			next.ServeHTTP(writer, request)
+		}
+	}
+}
+
+func corsMiddleware(next http.Handler) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Access-Control-Allow-Origin", "*")
+		writer.Header().Set("Access-Control-Allow-Headers", "content-type")
+		if "OPTIONS" == request.Method {
+			respond(writer, http.StatusOK, nil)
+		} else {
+			next.ServeHTTP(writer, request)
 		}
 	}
 }
 
 func pingHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
 		body := model.NewSimpleResponse("pong!").ToJson()
-		if _, err := w.Write(body); err != nil {
+		if _, err := writer.Write(body); nil != err {
 			panic(err)
 		}
 	}
@@ -72,18 +85,18 @@ func pingHandler() http.HandlerFunc {
 
 func authenticateHandler() http.HandlerFunc {
 	var alg = jwt.NewHS256([]byte("secret"))
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
 		payload := jwt.Payload{
 			Subject:  "someone",
 			Issuer:   "hades",
 			IssuedAt: jwt.NumericDate(time.Now()),
 		}
 		token, err := jwt.Sign(payload, alg)
-		if err != nil {
+		if nil != err {
 			panic(err)
 		}
 		body := model.NewTokenResponse(token).ToJson()
-		if _, err := w.Write(body); err != nil {
+		if _, err := writer.Write(body); nil != err {
 			panic(err)
 		}
 	}

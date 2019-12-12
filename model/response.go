@@ -7,11 +7,15 @@ type response struct {
 	Data data  `json:"data"`
 }
 
+type Response interface {
+	ToJson() []byte
+}
+
 func newResponseSuccess(data data, message *string) *response {
 	return &response{Meta: newMetaSuccess(message), Data: data}
 }
 
-func NewResponseError(message string) *response {
+func NewResponseError(message string) Response {
 	return &response{Meta: newMetaError(message)}
 }
 
