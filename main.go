@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	jwt "github.com/gbrlsnchs/jwt/v3"
 	"github.com/mistyfiky/agh-sr-hades/model"
 	"net/http"
@@ -9,13 +10,15 @@ import (
 
 func main() {
 	http.HandleFunc("/ping",
-		contentTypeMiddleware(
-			corsMiddleware(
-				pingHandler())))
+		errorMiddleware(
+			contentTypeMiddleware(
+				corsMiddleware(
+					pingHandler()))))
 	http.HandleFunc("/authenticate",
-		contentTypeMiddleware(
-			corsMiddleware(
-				authenticateHandler())))
+		errorMiddleware(
+			contentTypeMiddleware(
+				corsMiddleware(
+					authenticateHandler()))))
 	if err := http.ListenAndServe(":80", nil); err != nil {
 		panic(err)
 	}
@@ -24,6 +27,24 @@ func main() {
 func contentTypeMiddleware(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		h.ServeHTTP(w, r)
+	}
+}
+
+func errorMiddleware(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if i := recover(); i != nil {
+				err, ok := i.(error)
+				if !ok {
+					err = errors.New("undefined error")
+				}
+				body := model.NewResponseError(err.Error()).ToJson()
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write(body)
+			}
+		}()
 		h.ServeHTTP(w, r)
 	}
 }
