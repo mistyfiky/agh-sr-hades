@@ -2,6 +2,8 @@
 
 ## usage
 ```shell script
+# requirements
+brew install jq
 # build
 docker build -t hades -f .docker/Dockerfile .
 #prepare
