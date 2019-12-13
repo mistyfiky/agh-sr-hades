@@ -1,18 +1,10 @@
 package model
 
 type Token struct {
-	Token []byte `json:"token"`
-}
-
-func newToken(token []byte) *Token {
-	return &Token{Token: token}
+	Token string `json:"token"`
 }
 
 type TokenResponse struct {
-	*response
-	Data *Token `json:"data"`
-}
-
-func NewTokenResponse(token []byte) *TokenResponse {
-	return &TokenResponse{response: newResponseSuccess(newToken(token), nil)}
+	Meta Meta  `json:"meta"`
+	Data Token `json:"data"`
 }

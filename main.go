@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	jwt "github.com/gbrlsnchs/jwt/v3"
 	"github.com/mistyfiky/agh-sr-hades/model"
@@ -19,21 +20,23 @@ func main() {
 			methodMiddleware("POST",
 				corsMiddleware(
 					authenticateHandler()))))
-	if err := http.ListenAndServe(":80", nil); err != nil {
+	if err := http.ListenAndServe(":80", nil); nil != err {
 		panic(err)
 	}
 }
 
-func respond(writer http.ResponseWriter, statusCode int, body model.Response) {
+func respond(writer http.ResponseWriter, statusCode int, response interface{}) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(statusCode)
-	if statusCode > 299 && nil == body {
-		body = model.NewResponseError(http.StatusText(statusCode))
+	if nil == response {
+		return
 	}
-	if nil != body {
-		if _, err := writer.Write(body.ToJson()); nil != err {
-			panic(err)
-		}
+	body, err := json.Marshal(response)
+	if nil != err {
+		panic(err)
+	}
+	if _, err := writer.Write(body); nil != err {
+		panic(err)
 	}
 }
 
@@ -45,7 +48,13 @@ func errorMiddleware(next http.Handler) http.HandlerFunc {
 				if !ok {
 					err = errors.New("undefined error")
 				}
-				respond(writer, http.StatusInternalServerError, model.NewResponseError(err.Error()))
+				response := model.SimpleResponse{
+					Meta: model.Meta{
+						Success: false,
+						Message: err.Error(),
+					},
+				}
+				respond(writer, http.StatusInternalServerError, response)
 			}
 		}()
 		next.ServeHTTP(writer, request)
@@ -55,7 +64,13 @@ func errorMiddleware(next http.Handler) http.HandlerFunc {
 func methodMiddleware(method string, next http.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if method != request.Method {
-			respond(writer, http.StatusMethodNotAllowed, nil)
+			response := model.SimpleResponse{
+				Meta: model.Meta{
+					Success: false,
+					Message: http.StatusText(http.StatusMethodNotAllowed),
+				},
+			}
+			respond(writer, http.StatusMethodNotAllowed, response)
 		} else {
 			next.ServeHTTP(writer, request)
 		}
@@ -76,28 +91,38 @@ func corsMiddleware(next http.Handler) http.HandlerFunc {
 
 func pingHandler() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		body := model.NewSimpleResponse("pong!").ToJson()
-		if _, err := writer.Write(body); nil != err {
-			panic(err)
+		response := model.SimpleResponse{
+			Meta: model.Meta{
+				Success: true,
+				Message: "pong!",
+			},
 		}
+		respond(writer, http.StatusOK, response)
 	}
 }
 
 func authenticateHandler() http.HandlerFunc {
-	var alg = jwt.NewHS256([]byte("secret"))
+	alg := jwt.NewHS256([]byte("secret"))
+	issuer := "hades"
 	return func(writer http.ResponseWriter, request *http.Request) {
 		payload := jwt.Payload{
-			Subject:  "someone",
-			Issuer:   "hades",
+			Subject:  "test",
+			Issuer:   issuer,
 			IssuedAt: jwt.NumericDate(time.Now()),
 		}
 		token, err := jwt.Sign(payload, alg)
 		if nil != err {
 			panic(err)
 		}
-		body := model.NewTokenResponse(token).ToJson()
-		if _, err := writer.Write(body); nil != err {
-			panic(err)
+		response := model.TokenResponse{
+			Meta: model.Meta{
+				Success: true,
+				Message: "success",
+			},
+			Data: model.Token{
+				Token: string(token[:]),
+			},
 		}
+		respond(writer, http.StatusOK, response)
 	}
 }
