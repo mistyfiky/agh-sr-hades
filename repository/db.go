@@ -9,15 +9,13 @@ import (
 var db *sql.DB
 
 func init() {
-	tmp, err := sql.Open("mysql", os.Getenv("DB_DSN"))
+	db = open(os.Getenv("DB_DSN"))
+}
+
+func open(dsn string) *sql.DB {
+	db, err := sql.Open("mysql", dsn)
 	if nil != err {
 		panic(err)
 	}
-	db = tmp
-	if _, err := db.Exec("CREATE TABLE IF NOT EXISTS `users` (" +
-		"`username` VARCHAR(255) NOT NULL, " +
-		"`password` VARCHAR(255) NOT NULL, " +
-		"PRIMARY KEY (`username`))"); nil != err {
-		panic(err)
-	}
+	return db
 }

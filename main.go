@@ -7,6 +7,7 @@ import (
 	"github.com/mistyfiky/agh-sr-hades/model"
 	"github.com/mistyfiky/agh-sr-hades/repository"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -103,7 +104,7 @@ func pingHandler() http.HandlerFunc {
 }
 
 func authenticateHandler() http.HandlerFunc {
-	alg := jwt.NewHS256([]byte("secret"))
+	alg := jwt.NewHS256([]byte(os.Getenv("SECURITY_KEY")))
 	issuer := "hades"
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var auth model.Auth
@@ -118,18 +119,18 @@ func authenticateHandler() http.HandlerFunc {
 			return
 		}
 		user := repository.FindUserByUsername(auth.Username)
-		if nil == user {
+		if nil == user || !user.IsAuthenticatedBy(auth.Password) {
 			response := model.SimpleResponse{
 				Meta: model.Meta{
 					Success: false,
-					Message: http.StatusText(http.StatusUnauthorized),
+					Message: "Invalid username or password",
 				},
 			}
 			respond(writer, http.StatusUnauthorized, response)
 			return
 		}
 		payload := jwt.Payload{
-			Subject:  user.Username,
+			Subject:  user.GetUsername(),
 			Issuer:   issuer,
 			IssuedAt: jwt.NumericDate(time.Now()),
 		}
