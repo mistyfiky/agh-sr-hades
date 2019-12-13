@@ -71,9 +71,9 @@ func methodMiddleware(method string, next http.Handler) http.HandlerFunc {
 				},
 			}
 			respond(writer, http.StatusMethodNotAllowed, response)
-		} else {
-			next.ServeHTTP(writer, request)
+			return
 		}
+		next.ServeHTTP(writer, request)
 	}
 }
 
@@ -83,9 +83,9 @@ func corsMiddleware(next http.Handler) http.HandlerFunc {
 		writer.Header().Set("Access-Control-Allow-Headers", "content-type")
 		if "OPTIONS" == request.Method {
 			respond(writer, http.StatusOK, nil)
-		} else {
-			next.ServeHTTP(writer, request)
+			return
 		}
+		next.ServeHTTP(writer, request)
 	}
 }
 
@@ -105,8 +105,19 @@ func authenticateHandler() http.HandlerFunc {
 	alg := jwt.NewHS256([]byte("secret"))
 	issuer := "hades"
 	return func(writer http.ResponseWriter, request *http.Request) {
+		var auth model.Auth
+		if err := json.NewDecoder(request.Body).Decode(&auth); nil != err {
+			response := model.SimpleResponse{
+				Meta: model.Meta{
+					Success: false,
+					Message: err.Error(),
+				},
+			}
+			respond(writer, http.StatusBadRequest, response)
+			return
+		}
 		payload := jwt.Payload{
-			Subject:  "test",
+			Subject:  auth.Username,
 			Issuer:   issuer,
 			IssuedAt: jwt.NumericDate(time.Now()),
 		}
