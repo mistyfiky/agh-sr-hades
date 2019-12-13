@@ -8,7 +8,7 @@ import (
 func init() {
 	dropTableUsers()
 	createTableUsers()
-	SaveUser(NewUser("test", "test"))
+	SaveUser(NewUser("user", "pass"))
 }
 
 func dropTableUsers() {
