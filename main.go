@@ -5,6 +5,7 @@ import (
 	"errors"
 	jwt "github.com/gbrlsnchs/jwt/v3"
 	"github.com/mistyfiky/agh-sr-hades/model"
+	"github.com/mistyfiky/agh-sr-hades/repository"
 	"net/http"
 	"time"
 )
@@ -116,8 +117,19 @@ func authenticateHandler() http.HandlerFunc {
 			respond(writer, http.StatusBadRequest, response)
 			return
 		}
+		user := repository.FindUserByUsername(auth.Username)
+		if nil == user {
+			response := model.SimpleResponse{
+				Meta: model.Meta{
+					Success: false,
+					Message: http.StatusText(http.StatusUnauthorized),
+				},
+			}
+			respond(writer, http.StatusUnauthorized, response)
+			return
+		}
 		payload := jwt.Payload{
-			Subject:  auth.Username,
+			Subject:  user.Username,
 			Issuer:   issuer,
 			IssuedAt: jwt.NumericDate(time.Now()),
 		}
