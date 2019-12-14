@@ -36,6 +36,7 @@ func main() {
 				methodMiddleware("GET",
 					jwtMiddleware(
 						meHandler())))))
+	log.Println("starting server on :80")
 	if err := http.ListenAndServe(":80", nil); nil != err {
 		log.Fatal(err.Error())
 	}
