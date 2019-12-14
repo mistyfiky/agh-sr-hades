@@ -3,29 +3,28 @@ package repository
 import (
 	"database/sql"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 )
 
 func init() {
-	dropTableUsers()
-	createTableUsers()
-	SaveUser(NewUser("user", "pass"))
-}
-
-func dropTableUsers() {
-	query := "DROP TABLE IF EXISTS `users`"
-	if _, err := db.Exec(query); nil != err {
+	defer func() {
+		if result := recover(); nil != result {
+			err, _ := result.(error)
+			log.Fatal(err)
+		}
+	}()
+	drop := "DROP TABLE IF EXISTS `users`"
+	if _, err := db.Exec(drop); nil != err {
 		panic(err)
 	}
-}
-
-func createTableUsers() {
-	query := "CREATE TABLE IF NOT EXISTS `users` (" +
+	create := "CREATE TABLE IF NOT EXISTS `users` (" +
 		"`username` VARCHAR(255) NOT NULL, " +
 		"`password` VARCHAR(255) NOT NULL, " +
 		"PRIMARY KEY (`username`))"
-	if _, err := db.Exec(query); nil != err {
+	if _, err := db.Exec(create); nil != err {
 		panic(err)
 	}
+	SaveUser(NewUser("user", "pass"))
 }
 
 type user struct {

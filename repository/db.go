@@ -3,19 +3,22 @@ package repository
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"log"
 	"os"
 )
 
 var db *sql.DB
 
 func init() {
-	db = open(os.Getenv("DB_DSN"))
-}
-
-func open(dsn string) *sql.DB {
-	db, err := sql.Open("mysql", dsn)
+	defer func() {
+		if result := recover(); nil != result {
+			err, _ := result.(error)
+			log.Fatal(err)
+		}
+	}()
+	tmp, err := sql.Open("mysql", os.Getenv("DB_DSN"))
 	if nil != err {
 		panic(err)
 	}
-	return db
+	db = tmp
 }
