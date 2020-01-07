@@ -1,6 +1,6 @@
-.docker
-.dockerignore
-.editorconfig
-.git
-.idea
-README.md
+/.dockerignore
+/.idea
+/Dockerfile
+/.editorconfig
+/.git
+/README.md
