@@ -2,6 +2,7 @@ package model
 
 type User struct {
 	Username string `json:"username"`
+	Movies []string `json:"movies"`
 }
 
 type UserResponse struct {

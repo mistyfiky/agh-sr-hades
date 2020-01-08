@@ -227,6 +227,11 @@ func usersGet(writer http.ResponseWriter, request *http.Request) {
 		http.NotFound(writer, request)
 		return
 	}
+	userMovies := repository.FindUserMoviesByUsername(username)
+	movies := []string{}
+	for _, userMovie := range userMovies {
+		movies = append(movies, userMovie.GetMovieId())
+	}
 	response := model.UserResponse{
 		Meta: model.Meta{
 			Success: true,
@@ -234,6 +239,7 @@ func usersGet(writer http.ResponseWriter, request *http.Request) {
 		},
 		Data: model.User{
 			Username: user.GetUsername(),
+			Movies: movies,
 		},
 	}
 	respond(writer, http.StatusOK, response)
