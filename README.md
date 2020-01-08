@@ -18,15 +18,15 @@ docker run --rm --name hades-db -p 3306:3306 --network hades-net\
  -e MYSQL_PASSWORD='pass'\
  -d mysql
 docker logs -f hades-db
-docker run --rm --name hades -p 80:80 --network hades-net\
+docker run --rm --name hades -p 8081:80 --network hades-net\
  -e JWT_KEY='secret'\
  -e DB_DSN='root:root@tcp(hades-db:3306)/hades'\
- -e APP_PORT='8080'
+ -e APP_PORT='80'\
  -d hades
 # test
-curl -s http://localhost:8080/ping
-token=$(curl -s http://localhost:8080/authenticate --data '{"username":"user","password":"pass"}' | tee $(tty) | jq -r .data.token)
-curl -s http://localhost:8080/me --header "Authorization: Bearer ${token}"
+curl -s http://localhost:8081/ping
+token=$(curl -s http://localhost:8081/authenticate --data '{"username":"user","password":"pass"}' | tee $(tty) | jq -r .data.token)
+curl -s http://localhost:8081/me --header "Authorization: Bearer ${token}"
 # cleanup
 docker stop hades hades-db
 docker network rm hades-net
