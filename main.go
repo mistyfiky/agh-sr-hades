@@ -33,18 +33,11 @@ func main() {
 			corsMiddleware(
 				methodMiddleware("POST",
 					authenticateHandler()))))
-	http.HandleFunc("/me",
-		errorMiddleware(
-			corsMiddleware(
-				methodMiddleware("GET",
-					jwtMiddleware(
-						meHandler())))))
 	http.HandleFunc("/users/",
 		errorMiddleware(
 			corsMiddleware(
-				methodMiddleware("PUT",
-					jwtMiddleware(
-						usersHandler())))))
+				jwtMiddleware(
+					usersHandler()))))
 	log.Println("starting server on " + addr)
 	if err := http.ListenAndServe(addr, nil); nil != err {
 		log.Fatal(err.Error())
@@ -209,45 +202,59 @@ func authenticateHandler() http.HandlerFunc {
 	}
 }
 
-func meHandler() http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		payload := getPayload(request)
-		user := repository.FindUserByUsername(payload.Subject)
-		if nil == user {
-			panic(errors.New("user not found"))
-		}
-		response := model.UserResponse{
-			Meta: model.Meta{
-				Success: true,
-				Message: "success",
-			},
-			Data: model.User{
-				Username: user.GetUsername(),
-			},
-		}
-		respond(writer, http.StatusOK, response)
-	}
-}
-
 func usersHandler() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		segments := strings.Split(request.URL.Path, "/")
-		if !(len(segments) >= 5 && segments[1] == "users" && segments[3] == "movies") {
+		switch  {
+		case len(segments) == 3 && segments[1] == "users" && "GET" == request.Method:
+			usersGet(writer, request)
+		case len(segments) == 5 && segments[1] == "users" && segments[3] == "movies" && "PUT" == request.Method:
+			usersMoviesPut(writer, request)
+		default:
 			http.NotFound(writer, request)
-			return
 		}
-		username := segments[2]
-		user := repository.FindUserByUsername(username)
-		if nil == user {
-			http.NotFound(writer, request)
-			return
-		}
-		movieId := segments[4]
-		userMovie := repository.FindUserMovieByUsernameAndMovieId(username, movieId)
-		if nil == userMovie {
-			userMovie = repository.NewUserMovie(username, movieId)
-			repository.SaveUserMovie(userMovie)
-		}
-		respond(writer, http.StatusNoContent, nil)
 	}
+}
+
+func usersGet(writer http.ResponseWriter, request *http.Request) {
+	segments := strings.Split(request.URL.Path, "/")
+	if len(segments) < 3 {
+		panic("invalid url path")
+	}
+	username := segments[2]
+	user := repository.FindUserByUsername(username)
+	if nil == user {
+		http.NotFound(writer, request)
+		return
+	}
+	response := model.UserResponse{
+		Meta: model.Meta{
+			Success: true,
+			Message: "success",
+		},
+		Data: model.User{
+			Username: user.GetUsername(),
+		},
+	}
+	respond(writer, http.StatusOK, response)
+}
+
+func usersMoviesPut(writer http.ResponseWriter, request *http.Request) {
+	segments := strings.Split(request.URL.Path, "/")
+	if len(segments) < 5 {
+		panic("invalid url path")
+	}
+	username := segments[2]
+	user := repository.FindUserByUsername(username)
+	if nil == user {
+		http.NotFound(writer, request)
+		return
+	}
+	movieId := segments[4]
+	userMovie := repository.FindUserMovieByUsernameAndMovieId(username, movieId)
+	if nil == userMovie {
+		userMovie = repository.NewUserMovie(username, movieId)
+		repository.SaveUserMovie(userMovie)
+	}
+	respond(writer, http.StatusNoContent, nil)
 }
