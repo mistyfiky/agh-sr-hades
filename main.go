@@ -10,12 +10,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
+var addr string
 var alg *jwt.HMACSHA
 
 func init() {
+	addr = ":" + os.Getenv("APP_PORT")
 	alg = jwt.NewHS256([]byte(os.Getenv("JWT_KEY")))
 }
 
@@ -36,8 +39,14 @@ func main() {
 				methodMiddleware("GET",
 					jwtMiddleware(
 						meHandler())))))
-	log.Println("starting server on :80")
-	if err := http.ListenAndServe(":80", nil); nil != err {
+	http.HandleFunc("/users/",
+		errorMiddleware(
+			corsMiddleware(
+				methodMiddleware("PUT",
+					jwtMiddleware(
+						usersHandler())))))
+	log.Println("starting server on " + addr)
+	if err := http.ListenAndServe(addr, nil); nil != err {
 		log.Fatal(err.Error())
 	}
 }
@@ -116,17 +125,25 @@ func corsMiddleware(next http.Handler) http.HandlerFunc {
 }
 
 func jwtMiddleware(next http.Handler) http.HandlerFunc {
+	respondUnauthorized := func(writer http.ResponseWriter) {
+		response := model.SimpleResponse{
+			Meta: model.Meta{
+				Success: false,
+				Message: http.StatusText(http.StatusUnauthorized),
+			},
+		}
+		respond(writer, http.StatusUnauthorized, response)
+	}
 	return func(writer http.ResponseWriter, request *http.Request) {
-		token := request.Header.Get("Authorization")[7:]
+		header := request.Header.Get("Authorization")
+		if len(header) < 7 {
+			respondUnauthorized(writer)
+			return
+		}
+		token := header[7:]
 		payload := jwt.Payload{}
 		if _, err := jwt.Verify([]byte(token), alg, &payload); nil != err {
-			response := model.SimpleResponse{
-				Meta: model.Meta{
-					Success: false,
-					Message: http.StatusText(http.StatusUnauthorized),
-				},
-			}
-			respond(writer, http.StatusUnauthorized, response)
+			respondUnauthorized(writer)
 			return
 		}
 		ctx := context.WithValue(request.Context(), "jwt", payload)
@@ -209,5 +226,28 @@ func meHandler() http.HandlerFunc {
 			},
 		}
 		respond(writer, http.StatusOK, response)
+	}
+}
+
+func usersHandler() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		segments := strings.Split(request.URL.Path, "/")
+		if !(len(segments) >= 5 && segments[1] == "users" && segments[3] == "movies") {
+			http.NotFound(writer, request)
+			return
+		}
+		username := segments[2]
+		user := repository.FindUserByUsername(username)
+		if nil == user {
+			http.NotFound(writer, request)
+			return
+		}
+		movieId := segments[4]
+		userMovie := repository.FindUserMovieByUsernameAndMovieId(username, movieId)
+		if nil == userMovie {
+			userMovie = repository.NewUserMovie(username, movieId)
+			repository.SaveUserMovie(userMovie)
+		}
+		respond(writer, http.StatusNoContent, nil)
 	}
 }

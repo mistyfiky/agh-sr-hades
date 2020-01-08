@@ -17,7 +17,7 @@ func init() {
 	if _, err := db.Exec(drop); nil != err {
 		panic(err)
 	}
-	create := "CREATE TABLE IF NOT EXISTS `users` (" +
+	create := "CREATE TABLE `users` (" +
 		"`username` VARCHAR(255) NOT NULL, " +
 		"`password` VARCHAR(255) NOT NULL, " +
 		"PRIMARY KEY (`username`))"
