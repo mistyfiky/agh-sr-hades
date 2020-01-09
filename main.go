@@ -108,7 +108,7 @@ func methodMiddleware(method string, next http.Handler) http.HandlerFunc {
 func corsMiddleware(next http.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Access-Control-Allow-Origin", "*")
-		writer.Header().Set("Access-Control-Allow-Headers", "content-type")
+		writer.Header().Set("Access-Control-Allow-Headers", "*")
 		if "OPTIONS" == request.Method {
 			respond(writer, http.StatusOK, nil)
 			return
@@ -208,7 +208,7 @@ func usersHandler() http.HandlerFunc {
 		switch  {
 		case len(segments) == 3 && segments[1] == "users" && "GET" == request.Method:
 			usersGet(writer, request)
-		case len(segments) == 5 && segments[1] == "users" && segments[3] == "movies" && "PUT" == request.Method:
+		case len(segments) == 5 && segments[1] == "users" && segments[3] == "movies" && "POST" == request.Method:
 			usersMoviesPut(writer, request)
 		default:
 			http.NotFound(writer, request)
