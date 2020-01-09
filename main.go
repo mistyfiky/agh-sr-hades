@@ -209,7 +209,7 @@ func usersHandler() http.HandlerFunc {
 		case len(segments) == 3 && segments[1] == "users" && "GET" == request.Method:
 			usersGet(writer, request)
 		case len(segments) == 5 && segments[1] == "users" && segments[3] == "movies" && "POST" == request.Method:
-			usersMoviesPut(writer, request)
+			usersMoviesPost(writer, request)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -245,7 +245,7 @@ func usersGet(writer http.ResponseWriter, request *http.Request) {
 	respond(writer, http.StatusOK, response)
 }
 
-func usersMoviesPut(writer http.ResponseWriter, request *http.Request) {
+func usersMoviesPost(writer http.ResponseWriter, request *http.Request) {
 	segments := strings.Split(request.URL.Path, "/")
 	if len(segments) < 5 {
 		panic("invalid url path")

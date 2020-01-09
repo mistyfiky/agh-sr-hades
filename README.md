@@ -26,7 +26,7 @@ docker run --rm --name hades -p 8081:80 --network hades-net\
 # test
 curl -s http://localhost:8081/ping
 token=$(curl -s http://localhost:8081/authenticate --data '{"username":"user","password":"pass"}' | tee $(tty) | jq -r .data.token)
-curl -s http://localhost:8081/me --header "Authorization: Bearer ${token}"
+curl -s http://localhost:8081/users/user --header "Authorization: Bearer ${token}"
 # cleanup
 docker stop hades hades-db
 docker network rm hades-net
